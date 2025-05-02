@@ -1,4 +1,3 @@
-// src/main/services/activity.services.js
 import fs from 'node:fs'
 import { BrowserWindow } from 'electron'
 
@@ -11,7 +10,7 @@ let sawActivityThisSecond = false
 let activeSeconds = 0
 
 const lastFive = []
-let idleAlertShown = false   // ← guard to avoid dup windows
+let idleAlertShown = false   
 
 function emitUpdate(pct) {
   const win = BrowserWindow.getAllWindows()[0]
@@ -19,7 +18,7 @@ function emitUpdate(pct) {
 }
 
 function emitIdleAlert() {
-  if (idleAlertShown) return               // ← only once per idle session
+  if (idleAlertShown) return             
   idleAlertShown = true
 
   const idleWin = new BrowserWindow({
@@ -40,20 +39,18 @@ function onMinuteTick() {
   lastFive.push(pct)
   if (lastFive.length > 5) lastFive.shift()
 
-  // If 5 slots, all zero and we haven't shown the alert
   if (lastFive.length === 5 && lastFive.every(v => v === 0)) {
     emitIdleAlert()
   }
 
-  // Reset for next minute
   activeSeconds = 0
 }
 
 function onMouseData(buf) {
   if (buf.some((b, i) => i % 3 !== 0 && b !== 0)) {
     sawActivityThisSecond = true
-    idleAlertShown = false     // ← any activity resets the idle guard
-    lastFive.length = 0        // optional: clear buffer on activity
+    idleAlertShown = false    
+    lastFive.length = 0       
   }
 }
 
