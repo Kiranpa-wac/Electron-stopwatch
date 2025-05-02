@@ -2,27 +2,30 @@ import fs from 'node:fs'
 import { BrowserWindow } from 'electron'
 
 let mouseStream = null
-let keyStream   = null
+let keyboardStream = null
 let secondInterval = null
 let minuteInterval = null
 
-let sawActivityThisSecond = false
+let activityThisSecond = false
 let activeSeconds = 0
 
-const lastFive = []
-let idleAlertShown = false   
+const lastFiveMinutes = []
+let idleAlert = false
 
-function emitUpdate(pct) {
-  const win = BrowserWindow.getAllWindows()[0]
-  win?.webContents.send('activity-update', pct.toFixed(2))
+function recordActivity() {
+  activityThisSecond = true
+  idleAlert = false
+  lastFiveMinutes.length = 0
 }
 
-function emitIdleAlert() {
-  if (idleAlertShown) return             
-  idleAlertShown = true
+function idleWindow() {
+  if (idleAlert) return
+  idleAlert = true
 
   const idleWin = new BrowserWindow({
-    width: 300, height: 150, title: 'Idle Alert',
+    width: 300,
+    height: 150,
+    title: 'Idle Alert',
     autoHideMenuBar: true,
     webPreferences: { contextIsolation: true }
   })
@@ -33,69 +36,68 @@ function emitIdleAlert() {
 }
 
 function onMinuteTick() {
-  const pct = (activeSeconds / 60) * 100
-  emitUpdate(pct)
+  const percentage = (activeSeconds / 60) * 100
+  const win = BrowserWindow.getAllWindows()[0]
+  win?.webContents.send('activity-update', percentage.toFixed(2))
 
-  lastFive.push(pct)
-  if (lastFive.length > 5) lastFive.shift()
+  lastFiveMinutes.push(percentage)
+  if (lastFiveMinutes.length > 5) lastFiveMinutes.shift()
 
-  if (lastFive.length === 5 && lastFive.every(v => v === 0)) {
-    emitIdleAlert()
+  if (lastFiveMinutes.length === 5 && lastFiveMinutes.every((v) => v === 0)) {
+    idleWindow()
   }
 
   activeSeconds = 0
 }
 
-function onMouseData(buf) {
-  if (buf.some((b, i) => i % 3 !== 0 && b !== 0)) {
-    sawActivityThisSecond = true
-    idleAlertShown = false    
-    lastFive.length = 0       
+function onMouseMovement(buffer) {
+  if (buffer.some((b, i) => i % 3 !== 0 && b !== 0)) {
+    recordActivity()
   }
 }
 
-function onKeyData(chunk) {
-  for (let off = 0; off + 23 < chunk.length; off += 24) {
-    const type  = chunk.readUInt16LE(off + 16)
-    const value = chunk.readInt32LE(off + 20)
+function onKeyboardStroke(buffer) {
+  for (let off = 0; off + 23 < buffer.length; off += 24) {
+    const type = buffer.readUInt16LE(off + 16)
+    const value = buffer.readInt32LE(off + 20)
     if (type === 1 && value > 0) {
-      sawActivityThisSecond = true
-      idleAlertShown = false   // reset guard on key activity
-      lastFive.length = 0
+      recordActivity()
       break
     }
   }
 }
 
 export function start() {
-  if (mouseStream || keyStream) return
+  if (mouseStream || keyboardStream) return
 
-  mouseStream = fs.createReadStream('/dev/input/mice').on('data', onMouseData)
-  keyStream   = fs.createReadStream('/dev/input/event3').on('data', onKeyData)
+  mouseStream = fs.createReadStream('/dev/input/mice').on('data', onMouseMovement)
+  keyboardStream = fs.createReadStream('/dev/input/event3').on('data', onKeyboardStroke)
 
-  sawActivityThisSecond = false
+  activityThisSecond = false
   activeSeconds = 0
-  lastFive.length = 0
-  idleAlertShown = false
+  lastFiveMinutes.length = 0
+  idleAlert = false
 
   secondInterval = setInterval(() => {
-    if (sawActivityThisSecond) activeSeconds++
-    sawActivityThisSecond = false
+    if (activityThisSecond) activeSeconds++
+    activityThisSecond = false
   }, 1000)
 
   minuteInterval = setInterval(onMinuteTick, 60_000)
 }
 
 export function stop() {
-  mouseStream?.destroy(); mouseStream = null
-  keyStream?.destroy();   keyStream   = null
+  mouseStream?.destroy()
+  mouseStream = null
+  keyboardStream?.destroy()
+  keyboardStream = null
 
   clearInterval(secondInterval)
   clearInterval(minuteInterval)
   secondInterval = minuteInterval = null
 
-  sawActivityThisSecond = false
+  activityThisSecond = false
   activeSeconds = 0
-  lastFive.length = 0
-  idleAlertShown = false
+  lastFiveMinutes.length = 0
+  idleAlert = false
 }
