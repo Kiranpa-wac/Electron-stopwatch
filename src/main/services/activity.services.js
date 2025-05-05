@@ -35,7 +35,7 @@ function idleWindow() {
     </body>`)
 }
 
-function onMinuteTick() {
+function activityPerMin() {
   const percentage = (activeSeconds / 60) * 100
   const win = BrowserWindow.getAllWindows()[0]
   win?.webContents.send('activity-update', percentage.toFixed(2))
@@ -83,7 +83,7 @@ export function start() {
     activityThisSecond = false
   }, 1000)
 
-  minuteInterval = setInterval(onMinuteTick, 60_000)
+  minuteInterval = setInterval(activityPerMin, 60_000)
 }
 
 export function stop() {
