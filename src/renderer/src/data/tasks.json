@@ -1,0 +1,57 @@
+{
+    "projects":[
+        {
+            "projectId": "1",
+            "projectName": "Project A",
+            "tasks": [
+                {
+                    "taskId": "1",
+                    "taskName": "Task A1",
+                    "status": "ongoing"
+                },
+                {
+                    "taskId": "2",
+                    "taskName": "Task A2",
+                    "status": "ongoing"
+                }, 
+                {
+                    "taskId": "3",
+                    "taskName": "Task A3",
+                    "status": "ongoing"
+                },
+                {
+                    "taskId": "4",
+                    "taskName": "Task A4",
+                    "status": "ongoing"
+                }
+            ]
+        },
+        {
+            "projectId": "2",
+            "projectName": "Project B",
+            "tasks": [
+                {
+                    "taskId": "1",
+                    "taskName": "Task B1",
+                    "status": "ongoing"
+                },
+                {
+                    "taskId": "2",
+                    "taskName": "Task B2",
+                    "status": "ongoing"
+                }, 
+                {
+                    "taskId": "3",
+                    "taskName": "Task B3",
+                    "status": "ongoing"
+                },
+                {
+                    "taskId": "4",
+                    "taskName": "Task B4",
+                    "status": "ongoing"
+                }
+            ]
+        }
+
+    ]
+}

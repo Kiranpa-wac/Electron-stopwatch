@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import ProjectList from './components/ProjectList'
 
 function formatTime(totalSeconds) {
   const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
@@ -37,20 +38,25 @@ export default function App() {
   }
 
   return (
-    <div style={{ textAlign: 'center', padding: '2rem' }}>
-      <h1 style={{ fontSize: '3rem', letterSpacing: '0.1em' }}>{formatTime(elapsed)}</h1>
+    <div>
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <h1 style={{ fontSize: '3rem', letterSpacing: '0.1em' }}>{formatTime(elapsed)}</h1>
 
-      <div style={{ margin: '1rem 0' }}>
-        <button onClick={handleStart} style={{ marginRight: '1rem' }}>
-          Start
-        </button>
-        <button onClick={handleStop} style={{ marginRight: '1rem' }}>
-          Stop
-        </button>
-        <button onClick={handleReset}>Reset</button>
+        <div style={{ margin: '1rem 0' }}>
+          <button onClick={handleStart} style={{ marginRight: '1rem' }}>
+            Start
+          </button>
+          <button onClick={handleStop} style={{ marginRight: '1rem' }}>
+            Stop
+          </button>
+          <button onClick={handleReset}>Reset</button>
+        </div>
+
+        <h2>User Activity: {activityPercent}% active in the last minute</h2>
       </div>
-
-      <h2>User Activity: {activityPercent}% active in the last minute</h2>
+      <div>
+        <ProjectList />
+      </div>
     </div>
   )
 }

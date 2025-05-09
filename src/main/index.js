@@ -1,58 +1,16 @@
-// import { app, BrowserWindow, ipcMain, Notification, Tray, Menu } from 'electron'
-// import * as timerService from './services/timer.services.js'
-// import * as activityService from './services/activity.services.js'
-// import path from 'node:path'
-// import { fileURLToPath } from 'node:url'
-
-// let win = null
-// let tray = null
-
-// function createWindow() {
-//   win = new BrowserWindow({
-//     width: 800,
-//     height: 600,
-//     autoHideMenuBar: true,
-//     webPreferences: {
-//       // preload: path.join(__dirname, '../preload/index.js'),
-//       preload: fileURLToPath(new URL('../preload/index.js', import.meta.url)),
-
-//       contextIsolation: true,
-//       nodeIntegration: false
-//     }
-//   })
-
-//   win.loadURL('http://localhost:5173/')
-// }
-
-// function createTray() {
-//   const idleIcon = path.join(__dirname, '../../assets/stopwatch-white.png')
-//   const menuTemplate = [
-//     { label: 'Show', click: () => win.show() },
-//     { label: 'Quit', click: () => app.quit() }
-//   ]
-
-//   tray = new Tray(idleIcon)
-//   tray.setToolTip('Stopwatch')
-//   tray.setContextMenu(Menu.buildFromTemplate(menuTemplate))
-
-//   tray.on('click', () => {
-//     win.isVisible() ? win.hide() : win.show()
-//   })
-// }
-
-// app.whenReady().then(() => {
-//   createWindow()
-//   createTray()
-
-// })
-
-// app.on('activate', () => {
-//   if (BrowserWindow.getAllWindows().length === 0) createWindow()
-// })
-
-// app.on('window-all-closed', () => {
-//   if (process.platform !== 'darwin') app.quit()
-// })
+// console.log('Initializing global.sharedVariables...');
+global.sharedVariables = {
+  userActivity: [],
+  mouseMovements: [],
+  keyboardMovements: [],
+  isTracking: false,
+  activeTask: null,
+  lastMouseMovement: null,
+  lastKeyboardMovement: null,
+  startTime: null,
+  isIdle: false,
+}
+console.log('global.sharedVariables initialized:', global.sharedVariables)
 
 import { app, BrowserWindow, ipcMain, Notification, Tray, Menu } from 'electron'
 
@@ -63,6 +21,10 @@ import * as activityService from './services/activity.services.js'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { fileURLToPath } from 'url'
+import { startActivityStoreCorn, stopActivityStoreCorn } from './services/corn.service.js'
+import { giveInputDevicePermissionLinux } from './utils/permissions.js'
+import { switchTask } from './services/timer.services.js'
+import { startIdleCorn, stopIdleCheckCron } from './services/corn.service.js'
 
 let tray = null
 
@@ -98,6 +60,77 @@ function createWindow() {
   }
 }
 
+function createIdleWindow() {
+  if (idleWindow) return; // Prevent multiple idle windows
+
+  idleWindow = new BrowserWindow({
+    width: 300,
+    height: 150,
+    parent: mainWindow,
+    modal: true,
+    show: false,
+    resizable: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+
+  // Load a simple HTML content for the idle alert
+  idleWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Idle Alert</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f8d7da;
+            color: #721c24;
+          }
+          .container {
+            text-align: center;
+            padding: 20px;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            background-color: #fff;
+          }
+          h1 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+          }
+          p {
+            font-size: 0.9em;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>User Idle</h1>
+          <p>You have been idle for 2 minutes.</p>
+        </div>
+      </body>
+    </html>
+  `)}`);
+
+  idleWindow.on('ready-to-show', () => {
+    idleWindow.show();
+  });
+
+  idleWindow.on('closed', () => {
+    idleWindow = null;
+  });
+
+  return idleWindow;
+}
+
+
 function createTray() {
   const idleIcon = path.join(__dirname, '../../assets/stopwatch-white.png')
   const menuTemplate = [
@@ -113,8 +146,6 @@ function createTray() {
     win.isVisible() ? win.hide() : win.show()
   })
 }
-
-
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -136,6 +167,18 @@ app.whenReady().then(() => {
   createWindow()
   createTray()
 
+  ipcMain.on('task-selected', (event, taskName) => {
+    global.sharedVariables.activeTask = taskName
+    switchTask(taskName)
+    // if (global.sharedVariables.isTracking && global.sharedVariables.userActivity.length > 0) {
+    //   const lastEntry =
+    //     global.sharedVariables.userActivity[global.sharedVariables.userActivity.length - 1]
+    //   lastEntry.taskName = taskName
+    // } else {
+    //   console.warn('No active tracking session to store task:', taskName)
+    // }
+  })
+
   ipcMain.on('notify', (_e, { title, body }) => {
     if (Notification.isSupported()) {
       new Notification({ title, body }).show()
@@ -145,6 +188,8 @@ app.whenReady().then(() => {
   ipcMain.on('timer-start', () => {
     timerService.start()
     activityService.start()
+    startActivityStoreCorn()
+    startIdleCorn()
     const activeIcon = path.join(__dirname, '../../assets/stopwatch-red.png')
     tray.setImage(activeIcon)
   })
@@ -152,6 +197,8 @@ app.whenReady().then(() => {
   ipcMain.on('timer-stop', () => {
     timerService.stop()
     activityService.stop()
+    stopActivityStoreCorn()
+    stopIdleCheckCron( )
     const idleIcon = path.join(__dirname, '../../assets/stopwatch-white.png')
     tray.setImage(idleIcon)
   })
@@ -159,9 +206,18 @@ app.whenReady().then(() => {
   ipcMain.on('timer-reset', () => {
     timerService.reset()
     activityService.stop()
+    stopActivityStoreCorn()
     const idleIcon = path.join(__dirname, '../../assets/stopwatch-white.png')
     tray.setImage(idleIcon)
   })
+  ipcMain.on('user-idle', () => {
+    console.log('User idle event received, creating idle window');
+    createIdleWindow();
+  });
+
+  if (process.platform === 'linux') {
+    giveInputDevicePermissionLinux()
+  }
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

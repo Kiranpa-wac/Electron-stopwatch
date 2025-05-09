@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron')
+import { contextBridge, ipcRenderer } from "electron"
 
 contextBridge.exposeInMainWorld('timerApi', {
   start: () => ipcRenderer.send('timer-start'),
@@ -10,4 +10,8 @@ contextBridge.exposeInMainWorld('timerApi', {
 
 contextBridge.exposeInMainWorld('activityApi', {
   onActivityUpdate: (cb) => ipcRenderer.on('activity-update', (_e, percent) => cb(percent))
+})
+
+contextBridge.exposeInMainWorld('taskApi',{
+  selectTask : (taskName) => ipcRenderer.send('task-selected', taskName),
 })
