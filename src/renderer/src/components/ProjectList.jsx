@@ -1,43 +1,30 @@
-import React, { useState } from 'react'
+import React from 'react'
 import data from '../data/tasks.json'
+import './ProjectList.css'
 
-
-const ProjectList = () => {
-  const [selectedProjectId, setSelectedProjectId] = useState(null)
-  const [selectedTaskName, setSelectedTaskName] = useState(null)
-
-  const selectedProject = data.projects.find((proj) => proj.projectId === selectedProjectId)
-
-  const switchTask = (taskName) => {
-    setSelectedTaskName(taskName)
-    window.taskApi.selectTask(taskName)
-  }
+const ProjectList = ({ selectedProjectId, setSelectedProjectId, setSelectedTask }) => {
+  const selectProject = (projectId) => {
+    setSelectedProjectId(projectId);
+    // Reset selected task when changing projects
+    setSelectedTask(null);
+  };
 
   return (
-    <div>
-      <div>
-        <h2>Projects</h2>
-        {data.projects.map((project) => (
-          <div key={project.projectId} onClick={() => setSelectedProjectId(project.projectId)}>
-            {project.projectName}
+    <div className="project-list">
+      {data.projects.map((project) => (
+        <div 
+          key={project.projectId} 
+          className={`project-item ${selectedProjectId === project.projectId ? 'selected' : ''}`}
+          onClick={() => selectProject(project.projectId)}
+        >
+          <div className="project-content">
+            <span className="project-name">{project.projectName}</span>
+            {/* {selectedProjectId === project.projectId && (
+              <span className="project-time">6:54</span>
+            )} */}
           </div>
-        ))}
-      </div>
-      <div>
-        <h2>Tasks</h2>
-        {selectedProject ? (
-          <ul>
-            {selectedProject.tasks.map((task) => (
-              <li key={task.taskId} onClick={() => switchTask(task.taskName)}>
-                  
-                <strong>{task.taskName}</strong> 
-              </li>
-            ))}
-          </ul>
-        ): (
-          <p>Select a Project</p>
-        )}
-      </div>
+        </div>
+      ))}
     </div>
   )
 }

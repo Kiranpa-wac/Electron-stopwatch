@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Idle Alert</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    .container {
+      text-align: center;
+      padding: 20px;
+      border: 1px solid #f5c6cb;
+      border-radius: 5px;
+      background-color: #fff;
+    }
+
+    h1 {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+    }
+
+    .button-wrap button {
+      margin: 5px;
+    }
+
+    .dropdown-wrap {
+      margin-top: 15px;
+      display: none;
+    }
+
+    .dropdown-wrap select {
+      margin: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>User Idle</h1>
+    <div class="time">
+      <div class="text">
+        YOU HAVE BEEN IDLE FOR <span id="idle-time"></span>
+      </div>
+    </div>
+
+    <div class="button-wrap">
+      <button id="keep-idle">Keep Idle Time</button>
+      <button id="discard-idle">Discard Idle Time</button>
+      <button id="reassign-task">Reassign Task</button>
+    </div>
+
+    <div id="reassign-section" class="dropdown-wrap">
+      <label>
+        Project:
+        <select id="project-dropdown">
+          <option value="">Select Project</option>
+        </select>
+      </label>
+      <label>
+        Task:
+        <select id="task-dropdown" disabled>
+          <option value="">Select Task</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <script>
+    // your projects/tasks data
+    const projectData = {
+      projects: [
+        {
+          projectId: "1",
+          projectName: "Project A",
+          tasks: [
+            { taskId: "1", taskName: "Task A1", status: "ongoing" },
+            { taskId: "2", taskName: "Task A2", status: "ongoing" },
+            { taskId: "3", taskName: "Task A3", status: "ongoing" },
+            { taskId: "4", taskName: "Task A4", status: "ongoing" }
+          ]
+        },
+        {
+          projectId: "2",
+          projectName: "Project B",
+          tasks: [
+            { taskId: "1", taskName: "Task B1", status: "ongoing" },
+            { taskId: "2", taskName: "Task B2", status: "ongoing" },
+            { taskId: "3", taskName: "Task B3", status: "ongoing" },
+            { taskId: "4", taskName: "Task B4", status: "ongoing" }
+          ]
+        }
+      ]
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const idleTimeElement = document.getElementById('idle-time');
+      const discardBtn = document.getElementById('discard-idle');
+      const keepBtn = document.getElementById('keep-idle');
+      const reassignBtn = document.getElementById('reassign-task');
+      const reassignSection = document.getElementById('reassign-section');
+      const projectDropdown = document.getElementById('project-dropdown');
+      const taskDropdown = document.getElementById('task-dropdown');
+
+      // Populate project dropdown
+      projectData.projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.projectId;
+        opt.textContent = p.projectName;
+        projectDropdown.appendChild(opt);
+      });
+
+      // When project changes, populate tasks
+      projectDropdown.addEventListener('change', e => {
+        taskDropdown.innerHTML = '<option value="">Select Task</option>';
+        taskDropdown.disabled = true;
+        const proj = projectData.projects.find(x => x.projectId === e.target.value);
+        if (proj) {
+          proj.tasks.forEach(t => {
+            const o = document.createElement('option');
+            o.value = t.taskId;
+            o.textContent = t.taskName;
+            taskDropdown.appendChild(o);
+          });
+          taskDropdown.disabled = false;
+        }
+      });
+
+      // internal flag
+      let isReassigned = false;
+
+      // Toggle reassign UI & set flag
+      reassignBtn.addEventListener('click', () => {
+        isReassigned = true;
+        reassignSection.style.display = 'block';
+      });
+
+      // Update idle-time display
+      window.electron.ipcRenderer.on('idletime', (event, { idleTimeRounded }) => {
+        const totalMin = Math.round(idleTimeRounded / 60);
+        const hrs = Math.floor(totalMin / 60);
+        const mins = totalMin % 60;
+        const hTxt = hrs > 1 ? 'hours' : 'hour';
+        const mTxt = mins !== 1 ? 'minutes' : 'minute';
+        idleTimeElement.textContent = hrs > 0
+          ? ` ${hrs} ${hTxt} and ${mins} ${mTxt}!`
+          : ` ${mins} ${mTxt}!`;
+      });
+
+      // Discard idle
+      discardBtn.addEventListener('click', () => {
+        window.electron.ipcRenderer.send('discard-idle-time');
+      });
+
+      // Keep idle: send data only if isReassigned === true
+      keepBtn.addEventListener('click', () => {
+        if (isReassigned) {
+          const projName = projectDropdown.selectedIndex > 0
+            ? projectDropdown.options[projectDropdown.selectedIndex].textContent
+            : null;
+          const taskName = taskDropdown.selectedIndex > 0
+            ? taskDropdown.options[taskDropdown.selectedIndex].textContent
+            : null;
+
+          // if user hasn't picked both, you might alert or skip sending
+          if (projName && taskName) {
+            window.electron.ipcRenderer.send('continue-idle-time', {
+              isReassigned: true,
+              projectName: projName,
+              taskName: taskName
+            });
+            return;
+          }
+        }
+        // default: no reassignment data
+        window.electron.ipcRenderer.send('continue-idle-time');
+      });
+    });
+  </script>
+</body>
+
+</html>

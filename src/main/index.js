@@ -1,4 +1,3 @@
-// console.log('Initializing global.sharedVariables...');
 global.sharedVariables = {
   userActivity: [],
   mouseMovements: [],
@@ -8,13 +7,11 @@ global.sharedVariables = {
   lastMouseMovement: null,
   lastKeyboardMovement: null,
   startTime: null,
-  isIdle: false,
+  isIdle: false
 }
 console.log('global.sharedVariables initialized:', global.sharedVariables)
 
 import { app, BrowserWindow, ipcMain, Notification, Tray, Menu } from 'electron'
-
-// import { join } from 'path'
 import path from 'node:path'
 import * as timerService from './services/timer.services.js'
 import * as activityService from './services/activity.services.js'
@@ -24,9 +21,20 @@ import { fileURLToPath } from 'url'
 import { startActivityStoreCorn, stopActivityStoreCorn } from './services/corn.service.js'
 import { giveInputDevicePermissionLinux } from './utils/permissions.js'
 import { switchTask } from './services/timer.services.js'
+import { getCurrentTimeInSeconds } from './services/activity.services.js'
 import { startIdleCorn, stopIdleCheckCron } from './services/corn.service.js'
 
 let tray = null
+// let mainWindow = null
+export let idleWindow = null
+
+const isProd = app.isPackaged
+const preloadDir = isProd
+  ? path.join(process.resourcesPath, 'preload')
+  : fileURLToPath(new URL('../preload', import.meta.url))
+const rendererDir = isProd
+  ? path.join(process.resourcesPath, 'renderer')
+  : path.join(__dirname, '../renderer')
 
 function createWindow() {
   // Create the browser window.
@@ -60,76 +68,50 @@ function createWindow() {
   }
 }
 
-function createIdleWindow() {
-  if (idleWindow) return; // Prevent multiple idle windows
+export function createIdleWindow() {
+  console.log('Create Idle window function is initialized')
+  if (idleWindow) return
 
   idleWindow = new BrowserWindow({
     width: 300,
     height: 150,
-    parent: mainWindow,
     modal: true,
     show: false,
-    resizable: false,
     autoHideMenuBar: true,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
-  });
+      preload: path.join(preloadDir, 'idlePreload.mjs'),
+      contextIsolation: true,
+      nodeIntegration: true
+    }
+  })
 
-  // Load a simple HTML content for the idle alert
-  idleWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Idle Alert</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f8d7da;
-            color: #721c24;
-          }
-          .container {
-            text-align: center;
-            padding: 20px;
-            border: 1px solid #f5c6cb;
-            border-radius: 5px;
-            background-color: #fff;
-          }
-          h1 {
-            font-size: 1.2em;
-            margin-bottom: 10px;
-          }
-          p {
-            font-size: 0.9em;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>User Idle</h1>
-          <p>You have been idle for 2 minutes.</p>
-        </div>
-      </body>
-    </html>
-  `)}`);
-
-  idleWindow.on('ready-to-show', () => {
-    idleWindow.show();
-  });
-
+  if (is.dev && process.env.ELECTRON_RENDERER_URL) {
+    idleWindow.loadURL(`${process.env.ELECTRON_RENDERER_URL}/idle.html`)
+  } else {
+    try {
+      idleWindow.loadFile(join(__dirname, '../renderer/idle.html'))
+    } catch (error) {
+      console.log(error.message)
+    }
+  }
+  idleWindow.webContents.on('dom-ready', () => {
+    const timeNow = getCurrentTimeInSeconds()
+    const idleTimeRef = Math.max(
+      global.sharedVariables.lastMouseMovement ?? global.sharedVariables.startTime,
+      global.sharedVariables.lastKeyboardMovement ?? global.sharedVariables.startTime
+    )
+    const idleTime = timeNow - idleTimeRef
+    const idleTimeRounded = Math.round(idleTime)
+    console.log('Initial idle time sent:', idleTimeRounded)
+    idleWindow.webContents.send('update-idle-time', idleTimeRounded)
+  })
+  idleWindow.on('ready-to-show', () => idleWindow.show())
   idleWindow.on('closed', () => {
-    idleWindow = null;
-  });
+    idleWindow = null
+  })
 
-  return idleWindow;
+  return idleWindow
 }
-
 
 function createTray() {
   const idleIcon = path.join(__dirname, '../../assets/stopwatch-white.png')
@@ -143,7 +125,7 @@ function createTray() {
   tray.setContextMenu(Menu.buildFromTemplate(menuTemplate))
 
   tray.on('click', () => {
-    win.isVisible() ? win.hide() : win.show()
+    mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show()
   })
 }
 
@@ -157,6 +139,7 @@ app.whenReady().then(() => {
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
+
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
@@ -198,7 +181,7 @@ app.whenReady().then(() => {
     timerService.stop()
     activityService.stop()
     stopActivityStoreCorn()
-    stopIdleCheckCron( )
+    stopIdleCheckCron()
     const idleIcon = path.join(__dirname, '../../assets/stopwatch-white.png')
     tray.setImage(idleIcon)
   })
@@ -210,10 +193,6 @@ app.whenReady().then(() => {
     const idleIcon = path.join(__dirname, '../../assets/stopwatch-white.png')
     tray.setImage(idleIcon)
   })
-  ipcMain.on('user-idle', () => {
-    console.log('User idle event received, creating idle window');
-    createIdleWindow();
-  });
 
   if (process.platform === 'linux') {
     giveInputDevicePermissionLinux()

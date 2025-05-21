@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import ProjectList from './components/ProjectList'
+import TaskList from './components/TaskList'
+import './App.css'
 
 function formatTime(totalSeconds) {
   const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0')
@@ -11,6 +13,8 @@ function formatTime(totalSeconds) {
 export default function App() {
   const [elapsed, setElapsed] = useState(0)
   const [activityPercent, setActivityPercent] = useState(0)
+  const [selectedProjectId, setSelectedProjectId] = useState(null)
+  const [selectedTask, setSelectedTask] = useState(null)
 
   useEffect(() => {
     window.timerApi.onTick((seconds) => {
@@ -38,24 +42,113 @@ export default function App() {
   }
 
   return (
-    <div>
-      <div style={{ textAlign: 'center', padding: '2rem' }}>
-        <h1 style={{ fontSize: '3rem', letterSpacing: '0.1em' }}>{formatTime(elapsed)}</h1>
+    <div className="app-container">
+      {/* Header */}
+      <div className="app-header">
+        <h1>Timez</h1>
+      </div>
 
-        <div style={{ margin: '1rem 0' }}>
-          <button onClick={handleStart} style={{ marginRight: '1rem' }}>
-            Start
-          </button>
-          <button onClick={handleStop} style={{ marginRight: '1rem' }}>
-            Stop
-          </button>
-          <button onClick={handleReset}>Reset</button>
+      {/* Main content */}
+      <div className="app-content">
+        {/* Left sidebar */}
+        <div className="app-sidebar">
+          {/* Timer display */}
+          <div className="timer-display">
+            <h1>{formatTime(elapsed)}</h1>
+          </div>
+
+          {/* Search projects */}
+          <div className="search-container">
+            <div className="search-input-wrapper">
+              <div className="search-icon">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+              <input type="text" className="search-input" placeholder="Search Projects" />
+            </div>
+          </div>
+
+          {/* Projects list */}
+          <div className="projects-container">
+            <ProjectList
+              selectedProjectId={selectedProjectId}
+              setSelectedProjectId={setSelectedProjectId}
+              setSelectedTask={setSelectedTask}
+            />
+          </div>
+
+          {/* Version number */}
+          <div className="version-info">
+            <div className="status-indicator">
+              <div className="status-dot"></div>
+            </div>
+            <div className="version-number">v.2.0.0 (beta-2)</div>
+          </div>
         </div>
 
-        <h2>User Activity: {activityPercent}% active in the last minute</h2>
-      </div>
-      <div>
-        <ProjectList />
+        {/* Right content area */}
+        <div className="app-main">
+          {/* Search tasks */}
+          <div className="task-search-container">
+            <div className="search-input-wrapper">
+              <div className="search-icon">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </div>
+              <input type="text" className="search-input" placeholder="Search task" />
+              <button className="menu-button">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="12" cy="12" r="1" />
+                  <circle cx="19" cy="12" r="1" />
+                  <circle cx="5" cy="12" r="1" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Tasks list */}
+          <div className="tasks-container">
+            <TaskList
+              projectId={selectedProjectId}
+              selectedTask={selectedTask}
+              setSelectedTask={setSelectedTask}
+              handleStart={handleStart}
+              handleStop={handleStop}
+            />
+          </div>
+
+          {/* Task details area */}
+          <div className="task-details">{selectedTask && <h2>{selectedTask}</h2>}</div>
+        </div>
       </div>
     </div>
   )

@@ -15,3 +15,4 @@ contextBridge.exposeInMainWorld('activityApi', {
 contextBridge.exposeInMainWorld('taskApi',{
   selectTask : (taskName) => ipcRenderer.send('task-selected', taskName),
 })
+

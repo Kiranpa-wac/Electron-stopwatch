@@ -27,7 +27,7 @@
     "sudo-prompt": "^9.2.1"
   },
   "devDependencies": {
-    "@electron-toolkit/eslint-config": "^2.0.0",
+    "@electron-toolkit/eslint-config": "2.0.0",
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
     "@electron/rebuild": "^3.7.2",
     "@vitejs/plugin-react": "^4.3.4",
