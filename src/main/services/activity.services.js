@@ -121,9 +121,8 @@ export const trackActivity = () => {
 
 export const updateTimeSlotWithEndedAt = (userActivity, idleTimeSlot, idleTimeEndedOn) => {
   // console.log(userActivity, 'inside function call')
-
   userActivity = userActivity.slice(0, 1)
-
+  console.log('before map', userActivity.activeTask)
   return userActivity.map((activity, index) => {
     if (index === userActivity.length - 1) {
       return { ...activity, event_ended_at: idleTimeEndedOn }
@@ -131,6 +130,7 @@ export const updateTimeSlotWithEndedAt = (userActivity, idleTimeSlot, idleTimeEn
       return activity
     }
   })
+  console.log('after mappinf', userActivity.activeTask)
 }
 
 export const checkIdle = () => {
@@ -434,6 +434,7 @@ export const keepIdleTime = () => {
 
 export const handleIdleTime = (skipIdle, reassignData = {}) => {
   idleTimeEndedOn = new Date()
+  const lastTask = global.sharedVariables.activeTask
   const { isReassigned = false, projectName, taskName } = reassignData
   if (idleWindow) {
     if (skipIdle) {
@@ -448,7 +449,7 @@ export const handleIdleTime = (skipIdle, reassignData = {}) => {
         starts_at: formatDateToDefaultFormat(idleTimeEndedOn),
         mouse_movements: 0,
         keyboard_movements: 0,
-        task_name: global.sharedVariables.activeTask || null
+        task_name: lastTask
       })
       console.log('after discarding idle time :', global.sharedVariables.userActivity)
     } else if (isReassigned && !skipIdle) {
