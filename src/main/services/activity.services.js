@@ -142,7 +142,7 @@ export const checkIdle = () => {
   }
 
   const { mouseMovements, keyboardMovements, startTime } = global.sharedVariables
-
+  console.log("activeTaskkkkkk:", global.sharedVariables.activeTask)
   console.log('startTime:', startTime)
 
   global.sharedVariables.lastMouseMovement =
@@ -436,6 +436,7 @@ export const keepIdleTime = () => {
 
 export const handleIdleTime = (skipIdle, reassignData = {}) => {
   idleTimeEndedOn = new Date()
+  const lastTask = global.sharedVariables.activeTask
   const { isReassigned = false, projectName, taskName } = reassignData
   if (idleWindow) {
     if (skipIdle) {
@@ -449,7 +450,7 @@ export const handleIdleTime = (skipIdle, reassignData = {}) => {
         starts_at: formatDateToDefaultFormat(idleTimeEndedOn),
         mouse_movements: 0,
         keyboard_movements: 0,
-        task_name: global.sharedVariables.activeTask || null
+        task_name: lastTask,
       })
     } else if (isReassigned && !skipIdle) {
 
