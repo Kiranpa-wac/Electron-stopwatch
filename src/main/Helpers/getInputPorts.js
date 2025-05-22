@@ -8,16 +8,16 @@ const COMMAND_GET_INPUT_DEVICE_EVENT_NUMBER =
   "tr -d '\n'"
 
 function executeCommand(cmd) {
-    try {
-        const result = execSync(cmd, {encoding: 'utf-8'})
-        return result.trim()
-    } catch (error) {
-        console.error(`Error executing command ${error.message}`)
-        process.exit(1)
-    }
+  try {
+    const result = execSync(cmd, { encoding: 'utf-8' })
+    return result.trim()
+  } catch (error) {
+    console.error(`Error executing command ${error.message}`)
+    process.exit(1)
+  }
 }
 
-export function getInputDevicePath(){
-    const eventNumber = executeCommand(COMMAND_GET_INPUT_DEVICE_EVENT_NUMBER)
-    return `/dev/input/event${eventNumber}` 
+export function getInputDevicePath() {
+  const eventNumber = executeCommand(COMMAND_GET_INPUT_DEVICE_EVENT_NUMBER)
+  return `/dev/input/event${eventNumber}`
 }

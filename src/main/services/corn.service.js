@@ -13,22 +13,22 @@ export const startActivityStoreCorn = () => {
   })
 }
 export const stopActivityStoreCorn = () => {
-    if(activityStoreCornJob){
-        activityStoreCornJob.stop()
-        activityStoreCornJob = null
-    }
+  if (activityStoreCornJob) {
+    activityStoreCornJob.stop()
+    activityStoreCornJob = null
+  }
 }
 
 export const startIdleCorn = () => {
-  if(idleCornJob){
+  if (idleCornJob) {
     return
   }
-  idleCornJob = corn.schedule('*/1 * * * *', checkIdle) 
+  idleCornJob = corn.schedule('*/1 * * * *', checkIdle)
 }
 
 export const stopIdleCheckCron = () => {
   if (idleCornJob) {
-    idleCornJob.stop();
-    idleCornJob = null;
+    idleCornJob.stop()
+    idleCornJob = null
   }
-};
+}
