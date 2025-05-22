@@ -3,6 +3,19 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { formatDateToDefaultFormat, getTimeSlot } from '../Helpers/date_manager'
 import { createIdleWindow, idleWindow } from '../index'
 import { continueTracking, pauseTracking } from './timer.services'
+import { platform } from '@electron-toolkit/utils'
+import {
+  startKeyboardTrackingMac,
+  startMouseTrackingMac,
+  stopKeyboardTrackingMac,
+  stopMouseTrackingMac
+} from '../utils/activityTracking_mac'
+import {
+  startKeyboardTrackingLinux,
+  startMouseTrackingLinux,
+  stopKeyboardTrackingLinux,
+  stopMouseTrackingLinux
+} from '../utils/activityTracking_linux'
 
 let mouseStream = null
 let keyboardStream = null
@@ -14,39 +27,27 @@ export const getCurrentTimeInSeconds = () => {
   return Math.floor(new Date().getTime() / 1000)
 }
 
-function onMouseMovement(buffer) {
-  global.sharedVariables?.mouseMovements.push(getCurrentTimeInSeconds())
-}
-
-function onKeyboardStroke(buffer) {
-  for (let i = 0; i + 23 < buffer.length; i += 24) {
-    const type = buffer.readUInt16LE(i + 16)
-    const value = buffer.readInt32LE(i + 20)
-    if (type === 1 && value > 0) {
-      global.sharedVariables?.keyboardMovements.push(getCurrentTimeInSeconds())
-      break
-    }
-  }
-}
-
 export function start() {
   if (!global.sharedVariables) {
     console.error('global.sharedVariables is not initialized')
     return
   }
-  if (mouseStream || keyboardStream) return
+  if (global.sharedVariables.isTracking) return
 
   try {
-    mouseStream = fs.createReadStream('/dev/input/mice').on('data', onMouseMovement)
-    keyboardStream = fs.createReadStream('/dev/input/event3').on('data', onKeyboardStroke)
+    if (process.platform === 'darwin') {
+      startMouseTrackingMac()
+      startKeyboardTrackingMac()
+    } else if (process.platform === 'linux') {
+      startMouseTrackingLinux()
+      startKeyboardTrackingLinux()
+    } else {
+      console.warn('Unsupported platform for input tracking')
+    }
   } catch (error) {
-    console.error(`Failed to access input devices: ${error.message}`)
-    console.log('Falling back to mock tracking for testing...')
-    startMockTracking()
+    console.error(`Input tracking error: ${error.message}`)
   }
-
   global.sharedVariables.isTracking = true
-
   // Initialize first placeholder
   const timeSlot = getTimeSlot()
   const currentTime = formatDateToDefaultFormat(new Date())
@@ -70,10 +71,10 @@ export function stop() {
     lastEntry.keyboard_movements = keyboardMovementsUnique.length
   }
 
-  mouseStream?.destroy()
-  mouseStream = null
-  keyboardStream?.destroy()
-  keyboardStream = null
+  stopMouseTrackingLinux()
+  stopMouseTrackingMac()
+  stopKeyboardTrackingLinux()
+  stopKeyboardTrackingMac()
 
   if (global.sharedVariables) {
     global.sharedVariables.isTracking = false
@@ -119,24 +120,22 @@ export const trackActivity = () => {
 }
 
 export const updateTimeSlotWithEndedAt = (userActivity, idleTimeSlot, idleTimeEndedOn) => {
-  console.log(userActivity, 'inside function call')
-
+  // console.log(userActivity, 'inside function call')
   userActivity = userActivity.slice(0, 1)
-
+  console.log('before map', userActivity.activeTask)
   return userActivity.map((activity, index) => {
-    console.log(activity, 'inside map')
-
     if (index === userActivity.length - 1) {
       return { ...activity, event_ended_at: idleTimeEndedOn }
     } else {
-      console.log('lop')
       return activity
     }
   })
+  console.log('after mappinf', userActivity.activeTask)
 }
 
 export const checkIdle = () => {
   if (!global.sharedVariables || !global.sharedVariables.isTracking) {
+    // console.log('isTracj=kingggg', global.sharedVariables.isTracking)
     console.log('Tracking is not active, skip idle check')
     return
   }
@@ -198,7 +197,7 @@ export const reassignTask = (projectName, taskName) => {
   global.sharedVariables.idleTimeEndedOn = formatDateToDefaultFormat(new Date())
   global.sharedVariables.activeTask = taskName
   const { userActivity, idleTimeStartedOn, idleTimeEndedOn } = global.sharedVariables
-  console.log('userActivity', userActivity)
+  // console.log('userActivity', userActivity)
   console.log('starton', formatDateToDefaultFormat(idleTimeStartedOn))
 
   console.log('end on', idleTimeEndedOn)
@@ -233,7 +232,7 @@ export const reassignTask = (projectName, taskName) => {
           type: 'normal',
           mouse_movements: slot.mouse_movements,
           keyboard_movements: slot.keyboard_movements,
-          task_name: taskName,
+          task_name: taskName
         })
         updatedActivity.push({
           ...slot,
@@ -255,7 +254,7 @@ export const reassignTask = (projectName, taskName) => {
           type: 'idle',
           mouse_movements: 0,
           keyboard_movements: 0,
-          task_name: taskName,
+          task_name: taskName
         })
       }
 
@@ -268,7 +267,7 @@ export const reassignTask = (projectName, taskName) => {
           type: 'idle',
           mouse_movements: 0,
           keyboard_movements: 0,
-          task_name: taskName,
+          task_name: taskName
         })
         updatedActivity.push({
           ...slot,
@@ -277,7 +276,7 @@ export const reassignTask = (projectName, taskName) => {
           type: 'normal',
           mouse_movements: slot.mouse_movements,
           keyboard_movements: slot.keyboard_movements,
-          task_name: taskName,
+          task_name: taskName
         })
       }
 
@@ -290,7 +289,7 @@ export const reassignTask = (projectName, taskName) => {
           type: 'normal',
           mouse_movements: slot.mouse_movements,
           keyboard_movements: slot.keyboard_movements,
-          task_name: taskName,
+          task_name: taskName
         })
         updatedActivity.push({
           ...slot,
@@ -299,7 +298,7 @@ export const reassignTask = (projectName, taskName) => {
           type: 'idle',
           mouse_movements: 0,
           keyboard_movements: 0,
-          task_name: taskName,
+          task_name: taskName
         })
         updatedActivity.push({
           ...slot,
@@ -315,14 +314,13 @@ export const reassignTask = (projectName, taskName) => {
   })
 
   global.sharedVariables.userActivity = updatedActivity
-  console.log('Updated user activity:REASSIGN', global.sharedVariables.userActivity)
 }
 
 export const keepIdleTime = () => {
   global.sharedVariables.idleTimeEndedOn = formatDateToDefaultFormat(new Date())
 
   const { userActivity, idleTimeStartedOn, idleTimeEndedOn } = global.sharedVariables
-  console.log('userActivity', userActivity)
+  // console.log('userActivity', userActivity)
   console.log('starton', formatDateToDefaultFormat(idleTimeStartedOn))
 
   console.log('end on', idleTimeEndedOn)
@@ -431,7 +429,7 @@ export const keepIdleTime = () => {
   })
 
   global.sharedVariables.userActivity = updatedActivity
-  console.log('Updated user activity:', global.sharedVariables.userActivity)
+  // console.log('Updated user activity:', global.sharedVariables.userActivity)
 }
 
 export const handleIdleTime = (skipIdle, reassignData = {}) => {
@@ -445,17 +443,26 @@ export const handleIdleTime = (skipIdle, reassignData = {}) => {
         getTimeSlot(idleTimeStartedOn),
         formatDateToDefaultFormat(idleTimeEndedOn)
       )
+      console.log('Active task at idle end :', global.sharedVariables.activeTask)
       global.sharedVariables.userActivity.push({
         time_slot: getTimeSlot(idleTimeEndedOn),
         starts_at: formatDateToDefaultFormat(idleTimeEndedOn),
         mouse_movements: 0,
         keyboard_movements: 0,
-        task_name: lastTask,
+        task_name: global.sharedVariables.activeTask || null
       })
+      console.log('after discarding idle time :', global.sharedVariables.userActivity)
     } else if (isReassigned && !skipIdle) {
-
       reassignTask(projectName, taskName)
-
+      const currentTime = formatDateToDefaultFormat(idleTimeEndedOn)
+      global.sharedVariables.userActivity.push({
+        time_slot: getTimeSlot(idleTimeEndedOn),
+        starts_at: currentTime,
+        mouse_movements: 0,
+        keyboard_movements: 0,
+        task_name: global.sharedVariables.activeTask || null
+      })
+      console.log('after reassign:', global.sharedVariables.userActivity)
     } else {
       keepIdleTime()
       const currentTime = formatDateToDefaultFormat(idleTimeEndedOn)
@@ -466,6 +473,7 @@ export const handleIdleTime = (skipIdle, reassignData = {}) => {
         keyboard_movements: 0,
         task_name: global.sharedVariables.activeTask || null
       })
+      console.log('after just keeping idle time :'.global.sharedVariables.userActivity)
     }
     idleWindow.close()
   }
