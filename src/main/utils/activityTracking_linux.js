@@ -1,22 +1,14 @@
 import fs from 'node:fs'
 import { getCurrentTimeInSeconds } from '../services/activity.services'
+import { getInputDevicePath } from '../Helpers/getInputPorts'
+import { spawn } from 'node:child_process'
 
 let mouseStream = null
-let keyboardStream = null
+let keyBoardDetectionLinux = null
+const triggerCommand = 'cat'
 
 function onMouseMovement(buffer) {
   global.sharedVariables?.mouseMovements.push(getCurrentTimeInSeconds())
-}
-
-function onKeyboardStroke(buffer) {
-  for (let i = 0; i + 23 < buffer.length; i += 24) {
-    const type = buffer.readUInt16LE(i + 16)
-    const value = buffer.readInt32LE(i + 20)
-    if (type === 1 && value > 0) {
-      global.sharedVariables?.keyboardMovements.push(getCurrentTimeInSeconds())
-      break
-    }
-  }
 }
 
 export function startMouseTrackingLinux() {
@@ -33,14 +25,26 @@ export function stopMouseTrackingLinux() {
 }
 
 export function startKeyboardTrackingLinux() {
-  try {
-    keyboardStream = fs.createReadStream('dev/input/event3').on('data', onKeyboardStroke)
-  } catch (error) {
-    console.error(`Failed to start Linux Keyboard tracking: ${error.message}`)
-  }
+  const keyboardArgs = getInputDevicePath()
+  const args = [keyboardArgs]
+  global.sharedVariables.keyboardMovements.push(getCurrentTimeInSeconds())
+  keyBoardDetectionLinux = spawn(triggerCommand, args)
+
+  keyBoardDetectionLinux.stdout.on('data', (data) => {
+    if (data && !global.sharedVariables.isIdle) {
+      global.sharedVariables.keyboardMovements.push(getCurrentTimeInSeconds())
+    }
+  })
+
+  keyBoardDetectionLinux.stderr.on('data', () => {})
+
+  keyBoardDetectionLinux.on('close', () => {})
 }
 
 export function stopKeyboardTrackingLinux() {
-  keyboardStream?.destroy()
-  keyboardStream = null
+  if (keyBoardDetectionLinux) {
+    keyBoardDetectionLinux.kill()
+    keyBoardDetectionLinux.on('close', () => {})
+    keyBoardDetectionLinux = null
+  }
 }

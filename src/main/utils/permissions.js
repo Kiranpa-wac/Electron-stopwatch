@@ -1,5 +1,6 @@
 import sudoPrompt from 'sudo-prompt';
 import fs from 'fs';
+import { getInputDevicePath } from '../Helpers/getInputPorts';
 
 
 
@@ -21,7 +22,7 @@ export async function giveInputDevicePermissionLinux(){
     console.log('Checking permissions for input devices...')
     try{
         const mouseFile = '/dev/input/mice'
-        const keyboardFile = '/dev/input/event3'
+        const keyboardFile = getInputDevicePath()
 
         const [mousePermission, keyboardPermission] = await Promise.all([
             checkPermissions(mouseFile),
