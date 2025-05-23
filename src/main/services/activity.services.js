@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { BrowserWindow, ipcMain } from 'electron'
 import { formatDateToDefaultFormat, getTimeSlot } from '../Helpers/date_manager'
-import { createIdleWindow, idleWindow } from '../index'
+import { createIdleWindow } from '../index'
 import { continueTracking, pauseTracking } from './timer.services'
 import { platform } from '@electron-toolkit/utils'
 import {
@@ -22,6 +22,7 @@ let keyboardStream = null
 let idleTimeStartedOn
 let idleTime
 let idleTimeEndedOn
+let idleWindow
 
 export const getCurrentTimeInSeconds = () => {
   return Math.floor(new Date().getTime() / 1000)
@@ -175,9 +176,7 @@ export const checkIdle = () => {
     console.log(`User is idle for ${idleTimeRounded} seconds`)
     console.log(`Idle time started on: ${idleStart.toISOString()}`)
 
-    if (!idleWindow) {
-      createIdleWindow()
-    }
+    idleWindow = createIdleWindow()
     if (idleWindow) {
       console.log(`Idle time: ${idleTimeRounded} seconds`)
       pauseTracking()
@@ -476,7 +475,11 @@ export const handleIdleTime = (skipIdle, reassignData = {}) => {
       })
       console.log('after just keeping idle time :'.global.sharedVariables.userActivity)
     }
+    global.sharedVariables.isIdle = false
+    global.sharedVariables.mouseMovements.push(getCurrentTimeInSeconds())
+
     idleWindow.close()
+    idleWindow = null
   }
 }
 

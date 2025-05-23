@@ -1,4 +1,4 @@
-import { format } from "date-fns"
+import { format } from 'date-fns'
 
 export const getTimeSlot = (date = new Date()) => {
   const copiedDate = new Date(date)
@@ -8,4 +8,4 @@ export const getTimeSlot = (date = new Date()) => {
 
 export const formatDateToDefaultFormat = (date = new Date()) => {
   return format(date, "yyyy-MM-dd'T'HH:mm:ssxxx")
-}   
+}
