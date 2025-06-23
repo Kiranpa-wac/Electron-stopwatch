@@ -33,3 +33,4 @@ $ npm run build:mac
 $ npm run build:linux
 ```
 # Electron-stopwatch
+# Electron-Timer
