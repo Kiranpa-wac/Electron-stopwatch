@@ -34,3 +34,4 @@ $ npm run build:linux
 ```
 # Electron-stopwatch
 # Electron-Timer
+# Electron-Timer
